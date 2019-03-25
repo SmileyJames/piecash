@@ -311,6 +311,7 @@ def open_book(sqlite_file=None,
         raise GnucashException("Database '{}' does not exist (please use create_book to create " \
                                "GnuCash books from scratch)".format(uri_conn))
 
+    autoflush = kwargs.pop('autoflush', True)
     engine = create_piecash_engine(uri_conn, **kwargs)
 
     # backup database if readonly=False and do_backup=True
