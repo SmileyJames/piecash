@@ -5,6 +5,7 @@ import socket
 from collections import defaultdict
 
 from sqlalchemy import event, Column, VARCHAR, INTEGER, Table, PrimaryKeyConstraint
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql.ddl import DropConstraint, DropIndex
 from sqlalchemy_utils import database_exists
 
@@ -271,6 +272,7 @@ def open_book(sqlite_file=None,
               db_host=None,
               db_port=None,
               check_same_thread=True,
+              autoflush=True,
               **kwargs):
     """Open an existing GnuCash book
 
@@ -288,6 +290,7 @@ def open_book(sqlite_file=None,
     :param str db_host: host of database
     :param str db_port: port of database
     :param bool check_same_thread: sqlite flag that restricts connection use to the thread that created (see False for use in ipython/flask/... but read first https://docs.python.org/3/library/sqlite3.html)
+    :param bool autoflush: When True, all query operations will issue a flush() call to this Session before proceeding. (https://docs.sqlalchemy.org/en/latest/orm/session_api.html?highlight=autoflush#sqlalchemy.orm.session.Session.params.autoflush)
 
     :return: the document as a gnucash session
     :rtype: :class:`GncSession`
@@ -322,13 +325,16 @@ def open_book(sqlite_file=None,
 
         shutil.copyfile(url, url_backup)
 
-    locks = list(engine.execute(gnclock.select()))
+    try:
+        locks = list(engine.execute(gnclock.select()))
+    except ProgrammingError:  # gnclock table does not exist
+        locks = False
 
     # ensure the file is not locked by GnuCash itself
     if locks and not open_if_lock:
         raise GnucashException("Lock on the file")
 
-    s = Session(bind=engine)
+    s = Session(bind=engine, autoflush=autoflush)
 
     # check the versions in the table versions is consistent with the API
     version_book = {v.table_name: v.table_version
