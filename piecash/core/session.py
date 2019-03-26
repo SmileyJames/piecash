@@ -335,7 +335,8 @@ def open_book(sqlite_file=None,
     if locks and not open_if_lock:
         raise GnucashException("Lock on the file")
 
-    s = Session(bind=engine, autoflush=autoflush)
+    from sqlalchemy.orm import sessionmaker
+    s = sessionmaker(autoflush=autoflush)(bind=engine)
 
     # check the versions in the table versions is consistent with the API
     version_book = {v.table_name: v.table_version
